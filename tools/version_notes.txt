@@ -1,0 +1,49 @@
+####################
+### Version 1.2 ###
+####################
+- Cleaned up some WIP files
+
+####################
+### Version 1.1b ###
+####################
+- Fixed a circular dependency btwn LoLAPI.soloq and SQL.update_table
+
+####################
+### Version 1.1a ###
+####################
+- Slight restructuring
+
+####################
+### Version 1.1 ###
+####################
+- Added STAGE schema to Postgres DB
+    - game_summary table added
+        - update_table_game_summary added to SQL.update_table
+- Added phase and score back to clean_leaguepedia (for uuid PK)
+
+####################  
+### Version 1.0b ###
+####################
+- Moved dictionaries to common + refactored
+
+####################
+### Version 1.0a ###
+####################
+- Quick restructure, deleted SQL.soloq in favor of condensing some functions into other files
+
+###################
+### Version 1.0 ###
+###################
+
+- ADDED:
+    - SoloQ API + SQL tools
+    - Champion's Queue tools (No new CQ data since Mar2023)
+    - Rift Zone tools
+
+- Revived the following (Need to rebuild, but mostly works for now):
+    - Draft tools
+    - Player History tools
+
+- WIP:
+    - Player of Interest tracker
+    - Priority Algorithm
