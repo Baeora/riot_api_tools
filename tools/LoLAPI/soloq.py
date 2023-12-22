@@ -330,7 +330,7 @@ def api_get_idtag_from_summonerId_df(df):
 
     return df[['summonerId', 'puuid', 'gameName', 'tagLine']]
 
-def api_get_ladder(top=300, include_tag=True, api_key=None):
+def api_get_ladder(top=300, include_tag=True):
     """Gets the top X players in soloq.
 
     Args:
@@ -346,14 +346,13 @@ def api_get_ladder(top=300, include_tag=True, api_key=None):
     challenger = 'lol/league/v4/challengerleagues/by-queue/RANKED_SOLO_5x5'
     grandmaster = 'lol/league/v4/grandmasterleagues/by-queue/RANKED_SOLO_5x5'
     master = 'lol/league/v4/masterleagues/by-queue/RANKED_SOLO_5x5'
-
+    
     # Retrieve data for Challenger tier
     chall_resp = requests.get(root_url + challenger + '?' + api_key)
     chall_df = pd.DataFrame(chall_resp.json()['entries']).sort_values('leaguePoints', ascending=False).reset_index(drop=True)
 
     gm_df = pd.DataFrame()
     m_df = pd.DataFrame()
-
     # Retrieve data for Grandmaster tier if top > 300
     if top > 300:
         gm_resp = requests.get(root_url + grandmaster + '?' + api_key)
@@ -370,7 +369,7 @@ def api_get_ladder(top=300, include_tag=True, api_key=None):
     # Include riot_id and riot_tag if specified
     if include_tag:
         print('Grabbing Tags . . .')
-        idtags = api_get_idtag_from_summonerId_df(df, api_key)
+        idtags = api_get_idtag_from_summonerId_df(df)
         df = df.merge(idtags, on='summonerId', how='outer')
 
         col = df.columns.tolist()

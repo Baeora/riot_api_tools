@@ -76,71 +76,84 @@ def get_tournament_tags(year=None):
 ### Update Tables ###
 #####################
 
-def update_table_ladder():
+def update_table_ladder(from_parquet=False):
     """Update the ladder table with the top 2000 players in NA"""
-    ladder = api_get_ladder(top=2000)
+
+    if from_parquet:
+        ladder = pd.read_parquet(os.path.join(os.path.dirname(Path.cwd()), 'tools\\SQL\\data\\ladder.parquet'))
+    else:
+        ladder = api_get_ladder(top=2000)
+        
+        with db_engine.connect() as connection:
+            df = pd.read_sql(text(f"""
+                SELECT * FROM soloq.ladder
+            """), connection)
+        df.to_parquet(os.path.join(os.path.dirname(Path.cwd()), 'tools\\SQL\\data\\ladder.parquet'))
+    
     df_to_sql(add_upsert(ladder), db_engine, 'soloq', 'ladder', 'rank')
 
-    with db_engine.connect() as connection:
-        df = pd.read_sql(text(f"""
-            SELECT * FROM soloq.ladder
-        """), connection)
-    df.to_parquet('data/ladder.parquet')
-
-def update_table_soloq():
+def update_table_soloq(from_parquet=False):
     """Update PostgreSQL database table 'soloq.regional_player_matches' with the match history of the top 750 players in NA"""
-    ladder = get_ladder(top=750)
+    if from_parquet:
+        soloq_df = pd.read_parquet(os.path.join(os.path.dirname(Path.cwd()), 'tools\\SQL\\data\\regional_player_matches.parquet'))
+    else:
+        ladder = get_ladder(top=750)
 
-    soloq_df = pd.DataFrame()
-    i=0
-    for id, tag in zip(ladder['riot_id'].tolist(), ladder['riot_tag'].tolist()):
-        print(f'{i} - {id}#{tag}')
-        mh = api_get_match_history(gameName=id, tagLine=tag)
-        soloq_df = pd.concat([soloq_df, mh])
-        i += 1
+        soloq_df = pd.DataFrame()
+        i=0
+        for id, tag in zip(ladder['riot_id'].tolist(), ladder['riot_tag'].tolist()):
+            print(f'{i} - {id}#{tag}')
+            mh = api_get_match_history(gameName=id, tagLine=tag)
+            soloq_df = pd.concat([soloq_df, mh])
+            i += 1
 
-    soloq_df['uuid'] = soloq_df['match_id'] + '_' + soloq_df['riot_id']
-    soloq_df.set_index('uuid')
+        soloq_df['uuid'] = soloq_df['match_id'] + '_' + soloq_df['riot_id']
+        soloq_df.set_index('uuid')
 
-    print(f'Upserting {len(soloq_df)} new entries . . .')
-    df_to_sql(add_upsert(soloq_df), db_engine, 'soloq', 'regional_player_matches', 'uuid')
+        print(f'Upserting {len(soloq_df)} new entries . . .')
 
-    with db_engine.connect() as connection:
-        df = pd.read_sql(text(f"""
-            SELECT * FROM soloq.regional_player_matches
-        """), connection)
-    df.to_parquet('data/regional_player_matches.parquet')
+        with db_engine.connect() as connection:
+            df = pd.read_sql(text(f"""
+                SELECT * FROM soloq.regional_player_matches
+            """), connection)
+        df.to_parquet(os.path.join(os.path.dirname(Path.cwd()), 'tools\\SQL\\data\\regional_player_matches.parquet'))
 
-def update_table_game_summary():
+    df_to_sql(add_upsert(soloq_df), db_engine, 'soloq', 'regional_player_matches', 'uuid')  
+
+def update_table_game_summary(from_parquet=False):
     """Update PostgreSQL database table 'stage.game_summary' with the game summary of all games played globally since 2021"""
-    pb = pd.DataFrame()
-    for year in [2021, 2022, 2023, 2024]:
-        for long_tag in get_tournament_tags(year):
-            try:
-                link = f'https://lol.fandom.com/wiki/Special:RunQuery/PickBanHistory?PBH%5Bpage%5D={long_tag}&PBH%5Bteam%5D=&PBH%5Btextonly%5D%5Bis_checkbox%5D=true&PBH%5Btextonly%5D%5Bvalue%5D=&_run=&pfRunQueryFormName=PickBanHistory&wpRunQuery=&pf_free_text='
-                df = clean_leaguepedia(link)
+    if from_parquet:
+        pb = pd.read_parquet(os.path.join(os.path.dirname(Path.cwd()), 'tools\\SQL\\data\\game_summary.parquet'))
+    else:
+        pb = pd.DataFrame()
+        for year in [2021, 2022, 2023, 2024]:
+            for long_tag in get_tournament_tags(year):
+                try:
+                    link = f'https://lol.fandom.com/wiki/Special:RunQuery/PickBanHistory?PBH%5Bpage%5D={long_tag}&PBH%5Bteam%5D=&PBH%5Btextonly%5D%5Bis_checkbox%5D=true&PBH%5Btextonly%5D%5Bvalue%5D=&_run=&pfRunQueryFormName=PickBanHistory&wpRunQuery=&pf_free_text='
+                    df = clean_leaguepedia(link)
 
-                if 'spring' in long_tag.lower():
-                    tag = 'Spring'
-                if 'summer' in long_tag.lower():
-                    tag = 'Summer'
-                if 'winter' in long_tag.lower():
-                    tag = 'Winter'
-                
-                df['year'] = str(year)
-                df['tag'] = tag
+                    if 'spring' in long_tag.lower():
+                        tag = 'Spring'
+                    if 'summer' in long_tag.lower():
+                        tag = 'Summer'
+                    if 'winter' in long_tag.lower():
+                        tag = 'Winter'
+                    
+                    df['year'] = str(year)
+                    df['tag'] = tag
 
-                pb = pd.concat([pb, df]).reset_index(drop=True)
-                print({long_tag})
-            except:
-                print(f'Could not find tables for {long_tag}')
+                    pb = pd.concat([pb, df]).reset_index(drop=True)
+                    print({long_tag})
+                except:
+                    print(f'Could not find tables for {long_tag}')
 
-    pb['uuid'] = pb['team_1_name'] + '_' + pb['team_2_name'] + '_' + pb['year'] + '_' + pb['tag'] + '_' + pb['phase'] + '_' + pb['score']
-    pb = pb.drop_duplicates(subset='uuid')
+        pb['uuid'] = pb['team_1_name'] + '_' + pb['team_2_name'] + '_' + pb['year'] + '_' + pb['tag'] + '_' + pb['phase'] + '_' + pb['score']
+        pb = pb.drop_duplicates(subset='uuid')
+        
+        with db_engine.connect() as connection:
+            df = pd.read_sql(text(f"""
+                SELECT * FROM stage.game_summary
+            """), connection)
+        df.to_parquet(os.path.join(os.path.dirname(Path.cwd()), 'tools\\SQL\\data\\game_summary.parquet'))
+
     df_to_sql(add_upsert(pb), db_engine, 'stage', 'game_summary', 'uuid')
-
-    with db_engine.connect() as connection:
-        df = pd.read_sql(text(f"""
-            SELECT * FROM stage.game_summary
-        """), connection)
-    df.to_parquet('data/game_summary.parquet')

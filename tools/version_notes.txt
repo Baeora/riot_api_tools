@@ -1,4 +1,11 @@
 ####################
+### Version 1.6 ###
+####################
+- Added a README.md!
+- Added Parquet data
+- Fixed some bugs
+
+####################
 ### Version 1.5 ###
 ####################
 - Added demo.ipynb
