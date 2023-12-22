@@ -11,6 +11,7 @@ If you'd like more indepth instruction and tools, I'll be building upon this rep
 - [Overview](#overview)
 - [Usage](#usage)
 - [Installation](#installation)
+- [Riot API Endpoints]()
 - [Version Notes](#version-notes)
 - [License](#license)
 
@@ -87,6 +88,19 @@ Once you have finished the above tasks, navigate to the directory you'd like to 
 `service_file  =  os.path.join(os.path.dirname(Path.cwd()), 'JSONs\\<Your Oauth2 filename>.json')`
   
 That **should** be everything. If you run into errors or spot anything that I missed, please reach out!
+
+## Riot API Endpoints
+If you are curious what other Riot API endpoints are out there for you to play around with, you can find them [here](https://developer.riotgames.com/apis)!
+
+The ones I use in this project are
+- [Account V1](https://developer.riotgames.com/apis#account-v1)
+- [Summoner V4](https://developer.riotgames.com/apis#summoner-v4)
+- [League V4](https://developer.riotgames.com/apis#league-v4)
+- [Match V5](https://developer.riotgames.com/apis#match-v5)
+
+Once the `League V4` endpoint updates to `V5` I will likely sunset `Summoner V4` as it will no longer be needed
+
+Take a look around, bring one of the api functions in `LoLAPI.soloq` into a python notebook and replace some of the code with a new endpoint and see what happens!
 
 ## Version Notes
 For version notes, please see `/tools/version_notes.txt`! That is where I'll be putting all of my updates
