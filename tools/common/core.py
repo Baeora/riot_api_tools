@@ -5,9 +5,8 @@ import numpy as np
 import warnings
 from datetime import datetime, timedelta
 
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+from urllib.request import urlopen, Request
+import json
 from pathlib import Path
 
 from common.dictionaries import *
@@ -37,28 +36,7 @@ api_key = f"api_key={os.environ.get('api_key')}"
 ### CDragon ###
 ###############
 
-def convert_perks(df):
-    """Converts Perk IDs in a dataframe to their actual given Perk names
 
-    Args:
-        df (dataframe): Dataframe who's Perk IDs you wish to alter
-
-    Returns:
-        df: New dataframe with given Perk names
-    """    
-    perk_index = df.columns.get_loc('perks')
-
-    df.insert(perk_index, 'keystone', '')
-    df.insert(perk_index+1, 'secondary', '')
-
-    for i in range(len(df)):
-
-        df['keystone'][i] = json_extract(df['perks'][i], 'perk')[0]
-        df['secondary'][i] = json_extract(df['perks'][i], 'style')[1]
-
-    df.drop(columns=['perks'], inplace=True)
-    
-    return df
 
 def json_extract(obj, key):
     """Nested json extract function
@@ -94,8 +72,6 @@ def get_item_ids():
     Returns:
         item_ids (dataframe): Dataframe of item IDs.
     """    
-    from urllib.request import urlopen, Request
-    import json
 
     response = urlopen(Request('https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/items.json', headers={'User-Agent': 'Mozilla'}))
 
@@ -114,46 +90,49 @@ def get_item_ids():
 
     return item_ids
 
-def get_rune_ids():
-    """Pulls all rune IDs from Cdragon and returns them as a dataframe.
+def get_perk_ids(addPaths=False):
+    """Pulls all perk IDs from Cdragon and returns them as a dataframe.
 
     Returns:
-        rune_ids (dataframe): Dataframe of rune IDs.
+        perk_ids (dataframe): Dataframe of perk IDs.
     """
-    from urllib.request import urlopen, Request
-    import json
 
-    raw_keystone = urlopen(Request('https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/perks.json', headers={'User-Agent': 'Mozilla'}))
+    perk_req = urlopen(Request('https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/perks.json', headers={'User-Agent': 'Mozilla'}))
+    style_req = urlopen(Request('https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/perkstyles.json', headers={'User-Agent': 'Mozilla'}))
 
-    keystone_json = json.loads(raw_keystone.read())
+    perk_json = json.loads(perk_req.read())
+    style_json = json.loads(style_req.read())
 
-    keystone_ids = pd.DataFrame({
-        'id': json_extract(keystone_json, 'id'),
-        'name': json_extract(keystone_json, 'name'),
-        'path_name': json_extract(keystone_json, 'iconPath')
-    })
+    if addPaths:
+        perk_ids = pd.DataFrame({
+            'id': json_extract(perk_json, 'id'),
+            'name': json_extract(perk_json, 'name'),
+            'path_name': json_extract(perk_json, 'iconPath')
+        })
 
-    for i in range(len(keystone_ids)):
+        style_ids = pd.DataFrame({
+            'id': json_extract(style_json, 'id')[0::5],
+            'name': json_extract(style_json, 'name'),
+            'path_name': json_extract(style_json, 'iconPath')
+        })        
 
-        keystone_ids['path_name'][i] = (keystone_ids['path_name'][i].split('/lol-game-data/assets/v1/perk-images/')[1].lower())
+        for i in range(len(perk_ids)):
+            perk_ids['path_name'][i] = (perk_ids['path_name'][i].split('/lol-game-data/assets/v1/perk-images/')[1].lower())
 
-    raw_secondary_runes = urlopen(Request('https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/perkstyles.json', headers={'User-Agent': 'Mozilla'}))
+        for i in range(len(style_ids)):
+            style_ids['path_name'][i] = (style_ids['path_name'][i].split('/lol-game-data/assets/v1/perk-images/')[1].lower())
 
-    secondary_runes_json = json.loads(raw_secondary_runes.read())
+        perks = pd.concat([perk_ids, style_ids]).reset_index(drop=True)
+    else:
+        perk_ids = json_extract(perk_json, 'id')
+        perk_names = json_extract(perk_json, 'name')
 
-    secondary_runes_ids = pd.DataFrame({
-        'id': json_extract(secondary_runes_json, 'id')[0::5],
-        'name': json_extract(secondary_runes_json, 'name'),
-        'path_name': json_extract(secondary_runes_json, 'iconPath')
-    })
+        perk_ids.extend(json_extract(style_json, 'id'))
+        perk_names.extend(json_extract(style_json, 'name'))
 
-    for i in range(len(secondary_runes_ids)):
+        perks = dict(map(lambda i,j : (int(i),j) , perk_ids,perk_names))
 
-        secondary_runes_ids['path_name'][i] = (secondary_runes_ids['path_name'][i].split('/lol-game-data/assets/v1/perk-images/')[1].lower())
-
-    rune_ids = pd.concat([keystone_ids, secondary_runes_ids]).reset_index(drop=True)
-
-    return rune_ids
+    return perks
 
 def get_champion_ids():
     """Pulls all champion IDs from Cdragon and returns them as a dataframe.
@@ -161,8 +140,6 @@ def get_champion_ids():
     Returns:
         champion_ids (dataframe): Dataframe of champion IDs.
     """
-    from urllib.request import urlopen, Request
-    import json
     
     response = urlopen(Request('https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-summary.json', headers={'User-Agent': 'Mozilla'}))
 
@@ -192,9 +169,6 @@ def get_summoner_spell_ids():
     Returns:
         summoner_spell_ids (dataframe): Dataframe of summoner spell IDs.
     """
-    from urllib.request import urlopen, Request
-    import json
-
     response = urlopen(Request('https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/summoner-spells.json', headers={'User-Agent': 'Mozilla'}))
 
     summoner_spell_json = json.loads(response.read())
@@ -214,6 +188,34 @@ def get_summoner_spell_ids():
 
 def get_newest_champ():
     return get_champion_ids().sort_values('id', ascending=False).reset_index(drop=True)['name'][0]
+
+def convert_perks(df):
+    """Converts Perk IDs in a dataframe to their actual given Perk names
+
+    Args:
+        df (dataframe): Dataframe who's Perk IDs you wish to alter
+
+    Returns:
+        df: New dataframe with given Perk names
+    """    
+
+    perks = get_perk_ids()
+
+    perk_cols = ['perk_keystone',
+                'perk_primary_row_1',
+                'perk_primary_row_2',
+                'perk_primary_row_3',
+                'perk_secondary_row_1',
+                'perk_secondary_row_2',
+                'perk_primary_style',
+                'perk_secondary_style',
+                'perk_shard_defense',
+                'perk_shard_flex',
+                'perk_shard_offense']
+
+    df[perk_cols] = df[perk_cols].replace(perks)
+    
+    return df
 
 def add_images(df):
     """Adds image hyperlinks from Cdragon to a df based on the given IDs found in that df
@@ -331,44 +333,3 @@ def remove_outlier_IQR(df=None, stat=None):
     IQR=Q3-Q1
     df_final=df[~((df[stat]<(Q1-1.5*IQR)) | (df[stat]>(Q3+1.5*IQR)))]
     return df_final
-
-######################
-### Misc Functions ###
-######################
-
-def send_email(type=None):
-    """Quick function to send an email to myself for daily runs so I can see from home if they succeeded or not / whether or not I need to come in early to bugfix. Don't ask why it's written so poorly
-
-    Args:
-        type (str, optional): 'Started', 'Complete', 'Failed'. Defaults to None.
-    """    
-    
-
-    if type == 'Started':
-        msg_type = 'Started'
-    elif type == 'Complete':
-        msg_type = 'Complete'
-    elif type == 'Failed':
-        msg_type = 'Failed'
-    else:
-        print("Type must be 'Started', 'Failed' or 'Complete'")
-
-    msg = MIMEMultipart()
-    msg['From'] = 'lolbeora@gmail.com'
-    msg['To'] = 'mskriloff@evilgeniuses.gg'
-    msg['Subject'] = f'{msg_type}'
-    message = f'Daily Run {msg_type}!'
-    msg.attach(MIMEText(message))
-
-    mailserver = smtplib.SMTP('smtp.gmail.com',587)
-    # identify ourselves to smtp gmail client
-    mailserver.ehlo()
-    # secure our email with tls encryption
-    mailserver.starttls()
-    # re-identify ourselves as an encrypted connection
-    mailserver.ehlo()
-    mailserver.login('lolbeora@gmail.com', 'oahoqlaccrgpgroo')
-
-    mailserver.sendmail('lolbeora@gmail.com','mskriloff@evilgeniuses.gg',msg.as_string())
-
-    mailserver.quit()

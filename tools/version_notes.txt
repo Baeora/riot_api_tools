@@ -1,4 +1,11 @@
 ####################
+### Version 1.3 ###
+####################
+- Added dependencies
+- Fixed GPM bug + Re-Upserted old SoloQ entries
+- Updated convert_perks and get_perk_ids to be more modern
+
+####################
 ### Version 1.2 ###
 ####################
 - Cleaned up some WIP files
