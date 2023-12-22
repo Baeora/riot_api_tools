@@ -10,10 +10,13 @@ from sqlalchemy import text
 import pandas as pd
 
 def add_upsert(df):
+    """Adds upsert_at column to a dataframe"""
     df['upsert_at'] = datetime.now().astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
     return df
 
 def get_tournament_tags(year=None):
+    """Returns a list of tournament tags for a given year"""
+
     lcs_spring = f'LCS+{year}+Spring%2C+LCS+{year}+Spring+Playoffs'
     lcs_summer = f'LCS+{year}+Summer%2C+LCS+{year}+Championship'
 
@@ -74,11 +77,12 @@ def get_tournament_tags(year=None):
 #####################
 
 def update_table_ladder():
+    """Update the ladder table with the top 2000 players in NA"""
     ladder = api_get_ladder(top=2000)
     df_to_sql(add_upsert(ladder), db_engine, 'soloq', 'ladder', 'rank')
 
 def update_table_soloq():
-
+    """Update PostgreSQL database table 'soloq.regional_player_matches' with the match history of the top 750 players in NA"""
     ladder = get_ladder(top=750)
 
     soloq_df = pd.DataFrame()
@@ -96,8 +100,9 @@ def update_table_soloq():
     df_to_sql(add_upsert(soloq_df), db_engine, 'soloq', 'regional_player_matches', 'uuid')
 
 def update_table_game_summary():
+    """Update PostgreSQL database table 'stage.game_summary' with the game summary of all games played globally since 2021"""
     pb = pd.DataFrame()
-    for year in [2021, 2022, 2023]:
+    for year in [2021, 2022, 2023, 2024]:
         for long_tag in get_tournament_tags(year):
             try:
                 link = f'https://lol.fandom.com/wiki/Special:RunQuery/PickBanHistory?PBH%5Bpage%5D={long_tag}&PBH%5Bteam%5D=&PBH%5Btextonly%5D%5Bis_checkbox%5D=true&PBH%5Btextonly%5D%5Bvalue%5D=&_run=&pfRunQueryFormName=PickBanHistory&wpRunQuery=&pf_free_text='
