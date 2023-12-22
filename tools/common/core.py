@@ -23,7 +23,6 @@ database_password = os.environ.get('database_password')
 database_url = os.environ.get('database_url')
 database_port = os.environ.get('database_port')
 database_name = os.environ.get('database_name')
-database_schema_name = os.environ.get('database_schema')
 
 db_engine = create_db_engine(
     database_url, database_port, database_username, database_password, database_name)
