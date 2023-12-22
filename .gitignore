@@ -8,6 +8,9 @@ sandbox.ipynb
 # Google API Key
 unique-epigram-337119-5b7bc9cfd665.json
 
+# Parquet Data
+*.parquet
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

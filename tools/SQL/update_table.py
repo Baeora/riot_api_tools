@@ -81,6 +81,12 @@ def update_table_ladder():
     ladder = api_get_ladder(top=2000)
     df_to_sql(add_upsert(ladder), db_engine, 'soloq', 'ladder', 'rank')
 
+    with db_engine.connect() as connection:
+        df = pd.read_sql(text(f"""
+            SELECT * FROM soloq.ladder
+        """), connection)
+    df.to_parquet('data/ladder.parquet')
+
 def update_table_soloq():
     """Update PostgreSQL database table 'soloq.regional_player_matches' with the match history of the top 750 players in NA"""
     ladder = get_ladder(top=750)
@@ -98,6 +104,12 @@ def update_table_soloq():
 
     print(f'Upserting {len(soloq_df)} new entries . . .')
     df_to_sql(add_upsert(soloq_df), db_engine, 'soloq', 'regional_player_matches', 'uuid')
+
+    with db_engine.connect() as connection:
+        df = pd.read_sql(text(f"""
+            SELECT * FROM soloq.regional_player_matches
+        """), connection)
+    df.to_parquet('data/regional_player_matches.parquet')
 
 def update_table_game_summary():
     """Update PostgreSQL database table 'stage.game_summary' with the game summary of all games played globally since 2021"""
@@ -126,3 +138,9 @@ def update_table_game_summary():
     pb['uuid'] = pb['team_1_name'] + '_' + pb['team_2_name'] + '_' + pb['year'] + '_' + pb['tag'] + '_' + pb['phase'] + '_' + pb['score']
     pb = pb.drop_duplicates(subset='uuid')
     df_to_sql(add_upsert(pb), db_engine, 'stage', 'game_summary', 'uuid')
+
+    with db_engine.connect() as connection:
+        df = pd.read_sql(text(f"""
+            SELECT * FROM stage.game_summary
+        """), connection)
+    df.to_parquet('data/game_summary.parquet')

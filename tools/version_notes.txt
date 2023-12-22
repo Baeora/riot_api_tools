@@ -1,4 +1,10 @@
 ####################
+### Version 1.5 ###
+####################
+- Added demo.ipynb
+- Added a SQL/data folder that will house .parquet files of each SQL table
+
+####################
 ### Version 1.4a ###
 ####################
 - Changed database_utils location for logistical reasons
