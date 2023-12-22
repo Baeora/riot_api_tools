@@ -1,4 +1,9 @@
 ####################
+### Version 1.4a ###
+####################
+- Changed database_utils location for logistical reasons
+
+####################
 ### Version 1.4 ###
 ####################
 - DOCUMENTATION!

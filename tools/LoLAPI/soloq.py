@@ -8,7 +8,7 @@ import time
 
 from scripts.lol_get.soloq import *
 from common.core import *
-from common.database_utils import *
+from SQL.database_utils import *
 
 ###############
 ### Process ###

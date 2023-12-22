@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 
 from common.dictionaries import *
-from common.database_utils import *
+from SQL.database_utils import *
 
 from dotenv import load_dotenv
 load_dotenv()

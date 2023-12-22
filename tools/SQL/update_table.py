@@ -1,4 +1,4 @@
-from common.database_utils import *
+from SQL.database_utils import *
 from common.core import *
 
 from LoLAPI.soloq import api_get_match_history, api_get_ladder
