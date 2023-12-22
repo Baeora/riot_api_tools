@@ -36,8 +36,6 @@ api_key = f"api_key={os.environ.get('api_key')}"
 ### CDragon ###
 ###############
 
-
-
 def json_extract(obj, key):
     """Nested json extract function
 
@@ -46,7 +44,7 @@ def json_extract(obj, key):
         key (str): Key you're looking for
 
     Returns:
-        value: Returns dictionary value at key
+        list: Returns a list of every dictionary value at key
     """    
     arr = []
 
@@ -91,10 +89,14 @@ def get_item_ids():
     return item_ids
 
 def get_perk_ids(addPaths=False):
-    """Pulls all perk IDs from Cdragon and returns them as a dataframe.
+    """Pulls all perk IDs from Cdragon and returns them as a dictionary (or dataframe with image strings).
+
+    Args:
+        addPaths: If True, will instead return a 3-Column DataFrame containing image strings for each perk.
 
     Returns:
-        perk_ids (dataframe): Dataframe of perk IDs.
+        perk_ids (dictionary): Dictionary of perk IDs.
+        perk_ids (dataframe): Dataframe of perk IDs containing image strings for each perk.
     """
 
     perk_req = urlopen(Request('https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/perks.json', headers={'User-Agent': 'Mozilla'}))
@@ -187,6 +189,11 @@ def get_summoner_spell_ids():
     return summoner_spell_ids
 
 def get_newest_champ():
+    """Returns the most recently released champion's name
+
+    Returns:
+        str: Name of the most recently released champion.
+    """
     return get_champion_ids().sort_values('id', ascending=False).reset_index(drop=True)['name'][0]
 
 def convert_perks(df):
@@ -325,9 +332,30 @@ def convert_ms(time):
 ######################
 
 def calc_dist_vect(x1, x2, y1, y2):
+    """Calculates the distance vector between X1,Y1 and X2,Y2.
+
+    Args:
+        x1 (int, float): x1
+        x2 (int, float): x2
+        y1 (int, float): y1
+        y2 (int, float): y2
+
+    Returns:
+        float: Returns the distance vector between X1,Y1 and X2,Y2.
+    """
+
     return np.sqrt((x1 - x2)**2 + (y1 - y2)**2)
 
 def remove_outlier_IQR(df=None, stat=None):
+    """Removes outliers from a Dataframe based on inputted stat name. 
+
+    Args:
+        df (dataframe): Dataframe to be trimmed. Defaults to None.
+        stat (str): Column name with the stat you wish to remove the outlier of. Defaults to None.
+
+    Returns:
+        dataframe: _description_
+    """
     Q1=df[stat].quantile(0.25)
     Q3=df[stat].quantile(0.75)
     IQR=Q3-Q1

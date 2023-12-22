@@ -7,6 +7,15 @@ import pandas as pd
 import numpy as np
 
 def get_puuid(riot_id=None, riot_tag=None):
+    """Gets the puuid of the specified player.
+    
+    Args:
+        riot_id (str, required): Riot ID of the player you are searching.
+        riot_tag (str, required): Riot Tag of the player you are searching.
+    
+    Returns:
+        str: Returns the puuid of the specified player.
+    """
 
     with db_engine.connect() as connection:
         df = pd.read_sql(text(f"""
@@ -22,6 +31,15 @@ def get_puuid(riot_id=None, riot_tag=None):
     return df['puuid'][0]
 
 def get_ladder(top=300):
+    """Gets the top X players in soloq.
+    
+    Args:
+        top (int, optional): Number of players to return.
+    
+    Returns:
+        dataframe: Returns a dataframe of the top X players in soloq.
+    """
+
     with db_engine.connect() as connection:
         ladder = pd.read_sql(text(f"""
             select * from soloq.ladder order by rank asc limit {top}
@@ -30,13 +48,14 @@ def get_ladder(top=300):
     return ladder
 
 def get_soloq_games(db_engine, riot_id=None, riot_tag=None, role=None, on_role=True, start_date=None, end_date=None, patch=None):
-
     """Gets all soloq games of the specified scope.
 
     Args:
         db_engine (obj, required): db_engine.
-        playerName (str, required): Player you are searching.
+        riot_id (str, required): Riot ID of the player you are searching.
+        riot_tag (str, required): Riot Tag of the player you are searching.
         role (str, optional): Role of the player you are searching. (Filters offrole games out)
+        on_role (bool, optional): Whether or not to filter offrole games out.
         startDate (str, required): Start Date.
         endDate (str, required): End Date.
         patch (float or list, required): Patch or list of patches for scope.

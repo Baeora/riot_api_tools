@@ -18,6 +18,7 @@ script_path = os.path.abspath(os.path.dirname(__file__))
 ###############
 
 def scrape_cq_matches():
+    """Scrapes the Champions Queue page and adds the results to the Champions Queue CSV"""
     cq_scraper.Handler()
 
 ########################

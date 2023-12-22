@@ -15,7 +15,15 @@ from common.database_utils import *
 ###############
 
 def process_match_json(match_json, puuid):
+    """Processes the match json into a dataframe.
 
+    Args:
+        match_json (dict): Match JSON.
+        puuid (str): Player's puuid.
+
+    Returns:
+        dataframe: Dataframe of the processed match data.
+    """
     side_dict = {
         100:'blue',
         200:'red'
@@ -190,6 +198,8 @@ def process_match_json(match_json, puuid):
         return pd.DataFrame()
 
 def get_stored_matches(): 
+    """Gets the match ids that are already stored in the database."""
+    
     with db_engine.connect() as connection:
         df = pd.read_sql(text(f"""
             select distinct(match_id) from soloq.regional_player_matches
@@ -202,6 +212,17 @@ def get_stored_matches():
 ################
 
 def api_get_puuid(summonerId=None, gameName=None, tagLine=None, region='americas'):
+    """Gets the puuid from a summonerId or riot_id and riot_tag
+
+    Args:
+        summonerId (str, optional): Summoner ID. Defaults to None.
+        gameName (str, optional): Riot ID. Defaults to None.
+        tagLine (str, optional): Riot Tag. Defaults to None.
+        region (str, optional): Region. Defaults to 'americas'.
+
+    Returns:
+        str: puuid
+    """
 
     if summonerId is not None:
         root_url = 'https://na1.api.riotgames.com/'
@@ -219,7 +240,14 @@ def api_get_puuid(summonerId=None, gameName=None, tagLine=None, region='americas
         return response.json()['puuid']
 
 def api_get_idtag_from_puuid(puuid=None):
+    """Gets the riot_id and riot_tag from a puuid
 
+    Args:
+        puuid (str, optional): puuid. Defaults to None.
+
+    Returns:
+        id (dict): Dictionary with riot_id and riot_tag.
+    """
     root_url = 'https://americas.api.riotgames.com/'
     endpoint = 'riot/account/v1/accounts/by-puuid/'
 
@@ -233,7 +261,15 @@ def api_get_idtag_from_puuid(puuid=None):
     return id
 
 def api_get_idtag_from_summonerId_df(df):
-    
+    """Gets the riot_id and riot_tag from a summonerId dataframe. This is necessary due to the lack of idtags in Riot's leaderboard API endpoint.
+
+    Args:
+        df (dataframe): Dataframe with summonerId column.
+
+    Returns:
+        df (dataframe): Dataframe with summonerId, riot_id, and riot_tag columns.
+    """
+    # Set up sessions with retry mechanisms
     puuid_session = FuturesSession(executor=ProcessPoolExecutor(max_workers=10))
     idtag_session = FuturesSession(executor=ProcessPoolExecutor(max_workers=10))
     retries = 5
@@ -254,28 +290,30 @@ def api_get_idtag_from_summonerId_df(df):
     idtag_session.mount('http://', adapter)
     idtag_session.mount('https://', adapter)
 
+    # Retrieve puuids from summonerIds
     summonerIds = df['summonerId'].tolist()
-    puuid_threads=[puuid_session.get(f'https://na1.api.riotgames.com/lol/summoner/v4/summoners/{summonerId}'+'?'+api_key) for summonerId in summonerIds]
+    puuid_threads = [puuid_session.get(f'https://na1.api.riotgames.com/lol/summoner/v4/summoners/{summonerId}' + '?' + api_key) for summonerId in summonerIds]
 
     puuids = []
     summonerIds = []
-    t1=time.time()
+    t1 = time.time()
     for future in as_completed(puuid_threads):
         resp = future.result()
         summonerIds.append(resp.json()['id'])
         puuids.append(resp.json()['puuid'])
-    t2=time.time()
-    print(f'summonerId -> puuid -- {round(t2-t1, 2)}s')
-        
+    t2 = time.time()
+    print(f'summonerId -> puuid -- {round(t2 - t1, 2)}s')
+
     sum_puuid_df = pd.DataFrame({
         'puuid': puuids,
         'summonerId': summonerIds
     })
 
-    idtag_threads=[puuid_session.get(f'https://americas.api.riotgames.com/riot/account/v1/accounts/by-puuid/{puuid}'+'?'+api_key) for puuid in puuids]
+    # Retrieve idtags from puuids
+    idtag_threads = [puuid_session.get(f'https://americas.api.riotgames.com/riot/account/v1/accounts/by-puuid/{puuid}' + '?' + api_key) for puuid in puuids]
 
     df = pd.DataFrame()
-    t1=time.time()
+    t1 = time.time()
     for future in as_completed(idtag_threads):
         resp = future.result()
         idtag = pd.DataFrame({
@@ -284,62 +322,88 @@ def api_get_idtag_from_summonerId_df(df):
             'tagLine': [resp.json()['tagLine']],
         })
         df = pd.concat([df, idtag])
-    t2=time.time()
-    print(f'puuid -> idtag -- {round(t2-t1, 2)}s')
+    t2 = time.time()
+    print(f'puuid -> idtag -- {round(t2 - t1, 2)}s')
 
+    # Merge DataFrames and return selected columns
     df = df.merge(sum_puuid_df, on='puuid', how='inner')
 
     return df[['summonerId', 'puuid', 'gameName', 'tagLine']]
 
-def api_get_ladder(top=300, include_tag=True):
+def api_get_ladder(top=300, include_tag=True, api_key=None):
+    """Gets the top X players in soloq.
+
+    Args:
+        top (int, optional): Number of players to return. Defaults to 300.
+        include_tag (bool, optional): Whether or not to include riot_id and riot_tag. Adds a lot of extra processing time. Defaults to True.
+        api_key (str, optional): Riot Games API key for authentication. Must be provided if include_tag is True.
+
+    Returns:
+        DataFrame: Returns a DataFrame of the top X players in soloq.
+    """
 
     root_url = 'https://na1.api.riotgames.com/'
     challenger = 'lol/league/v4/challengerleagues/by-queue/RANKED_SOLO_5x5'
     grandmaster = 'lol/league/v4/grandmasterleagues/by-queue/RANKED_SOLO_5x5'
     master = 'lol/league/v4/masterleagues/by-queue/RANKED_SOLO_5x5'
 
-    chall_resp = requests.get(root_url+challenger+'?'+api_key)
+    # Retrieve data for Challenger tier
+    chall_resp = requests.get(root_url + challenger + '?' + api_key)
     chall_df = pd.DataFrame(chall_resp.json()['entries']).sort_values('leaguePoints', ascending=False).reset_index(drop=True)
 
     gm_df = pd.DataFrame()
     m_df = pd.DataFrame()
-    
+
+    # Retrieve data for Grandmaster tier if top > 300
     if top > 300:
-        gm_resp = requests.get(root_url+grandmaster+'?'+api_key)
+        gm_resp = requests.get(root_url + grandmaster + '?' + api_key)
         gm_df = pd.DataFrame(gm_resp.json()['entries']).sort_values('leaguePoints', ascending=False).reset_index(drop=True)
+
+    # Retrieve data for Master tier if top > 1000
     if top > 1000:
-        m_resp = requests.get(root_url+master+'?'+api_key)
+        m_resp = requests.get(root_url + master + '?' + api_key)
         m_df = pd.DataFrame(m_resp.json()['entries']).sort_values('leaguePoints', ascending=False).reset_index(drop=True)
 
-    df = pd.concat([chall_df, gm_df, m_df]).reset_index(drop=True)[0:top]
+    # Concatenate dataframes and select the top X players
+    df = pd.concat([chall_df, gm_df, m_df]).reset_index(drop=True)[:top]
 
+    # Include riot_id and riot_tag if specified
     if include_tag:
         print('Grabbing Tags . . .')
-        idtags = api_get_idtag_from_summonerId_df(df)
+        idtags = api_get_idtag_from_summonerId_df(df, api_key)
         df = df.merge(idtags, on='summonerId', how='outer')
 
         col = df.columns.tolist()
-        col.remove('summonerName')
-        col.remove('gameName')
-        col.remove('tagLine')
-        col.remove('puuid')
-        col.insert(1, 'tagLine')
-        col.insert(1, 'gameName')
-        col.insert(1, 'puuid')
+        col = [x for x in col if x not in ['summonerName', 'gameName', 'tagLine', 'puuid']]
+        for i in ['tagLine', 'gameName', 'puuid']:
+            col.insert(1, i)
 
         df = df[col].reset_index()
         df.columns = ['rank', 'summoner_id', 'puuid', 'riot_id', 'riot_tag', 'lp', 'tier', 'wins', 'losses', 'veteran', 'inactive', 'fresh_blood', 'hot_streak']
-        df['rank'] +=1
+        df['rank'] += 1
 
-        return df 
+        return df
 
+    # Reset index and rename columns if include_tag is False
     df = df.reset_index()
     df.columns = ['rank', 'summoner_id', 'puuid', 'riot_id', 'riot_tag', 'lp', 'tier', 'wins', 'losses', 'veteran', 'inactive', 'fresh_blood', 'hot_streak']
-    df['rank'] +=1
+    df['rank'] += 1
 
     return df
 
 def api_get_match_history_ids(puuid=None, region='americas', queue=420, start=0, count=100):
+    """Gets the match history ids for a given puuid.
+
+    Args:
+        puuid (str, optional): Player's puuid. Defaults to None.
+        region (str, optional): Player's region. Defaults to 'americas'.
+        queue (int, optional): Queue ID. Defaults to 420 (Ranked).
+        start (int, optional): Match # start (for pagination). Defaults to 0.
+        count (int, optional): How many matches per page. Defaults to 100.
+
+    Returns:
+        list: List of match ids.
+    """
 
     try:
         root_url = f'https://{region}.api.riotgames.com'
@@ -349,12 +413,23 @@ def api_get_match_history_ids(puuid=None, region='americas', queue=420, start=0,
         response = requests.get(root_url+endpoint+query_params+'&'+api_key)
 
         return response.json()
-    except:
+    except: # If the puuid is invalid, return false
         return False
 
 def api_get_match_history(gameName=None, tagLine=None, region='americas', debug=False):
+    """Gets the match history for a given riot_id and riot_tag.
 
+    Args:
+        gameName (str, optional): Player's Riot ID. Defaults to None.
+        tagLine (str, optional): Player's Riot Tag. Defaults to None.
+        region (str, optional): Player's region. Defaults to 'americas'.
+        debug (bool, optional): Whether or not to print out matchIds as they are processed. Defaults to False.
 
+    Returns:
+        DataFrame: DataFrame of all matches.
+    """
+
+    # Set up a session with retry mechanisms
     session = FuturesSession(executor=ProcessPoolExecutor(max_workers=10))
     retries = 5
     status_forcelist = [429]
@@ -370,36 +445,46 @@ def api_get_match_history(gameName=None, tagLine=None, region='americas', debug=
     session.mount('http://', adapter)
     session.mount('https://', adapter)
 
+    # Try to get the PUUID using the get_puuid function. If an exception occurs, fall back to using api_get_puuid
     try:
+        
         puuid = get_puuid(riot_id=gameName, riot_tag=tagLine, region=region)
     except:
         puuid = api_get_puuid(gameName=gameName, tagLine=tagLine, region=region)
 
     matchIds = api_get_match_history_ids(puuid=puuid)
 
+    # Filter out match IDs that are already stored
     try:
         stored_matches = get_stored_matches()
         matchIds = [x for x in matchIds if x not in stored_matches]
     except:
-        pass
+        df = pd.DataFrame()
 
-    df = pd.DataFrame()
     if len(matchIds) > 0:
-        futures=[session.get(f'https://{region}.api.riotgames.com/lol/match/v5/matches/{matchId}'+'?'+api_key) for matchId in matchIds]
-        
-        i=0
+        # If there are new matches to process, create asynchronous requests for match data
+        futures = [session.get(f'https://{region}.api.riotgames.com/lol/match/v5/matches/{matchId}' + '?' + api_key) for matchId in matchIds]
+
+        i = 0
+
+        # Iterate through completed asynchronous requests
         for future in as_completed(futures):
             resp = future.result()
+
             if debug:
-                t1=time.time()
+                # If debug is enabled, print match processing information
+                t1 = time.time()
                 df = pd.concat([df, process_match_json(resp.json(), puuid)])
-                t2=time.time()
-                print(resp.json()['metadata']['matchId']+f' - {i} ({round(t2-t1, 2)}s)')
-                i+=1
+                t2 = time.time()
+                print(resp.json()['metadata']['matchId'] + f' - {i} ({round(t2 - t1, 2)}s)')
+                i += 1
             else:
+                # If debug is not enabled, simply process the match
                 df = pd.concat([df, process_match_json(resp.json(), puuid)])
 
+        # Return the DataFrame containing information about the fetched matches
         return df
     else:
+        # If there are no new matches to process, print a message and return an empty DataFrame
         print(f'No new matches for {gameName}#{tagLine}')
         return pd.DataFrame()

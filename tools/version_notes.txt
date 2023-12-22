@@ -1,4 +1,11 @@
 ####################
+### Version 1.4 ###
+####################
+- DOCUMENTATION!
+    - Created docstrings and inline documentation for all functions
+    - Will work on a README.md when I can
+
+####################
 ### Version 1.3 ###
 ####################
 - Added dependencies

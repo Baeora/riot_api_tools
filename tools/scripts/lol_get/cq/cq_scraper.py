@@ -35,7 +35,8 @@ def days_before(days_prior=1, date=datetime.now(), return_str=True):
         return raw_n_days_before
 
 def format_team(match_ids, team_ids, dates, time, score, team):
-    
+    """Formats the team data into a dataframe."""
+
     role = ['top','jungle','mid','bot','support']*len(score)
     score = np.repeat(list(map(int, score)),5)
     time = [t for t in time for i in range(5)]
@@ -75,6 +76,8 @@ def format_team(match_ids, team_ids, dates, time, score, team):
     return(df_team[col_order])
 
 def get_champs(team):
+    """Gets the champion names from the team data."""
+
     avatar = []
     champ_name = []
     for player in team:
@@ -92,6 +95,8 @@ def get_champs(team):
     return(champ_name)
 
 def get_summoners(team):
+    """Gets the summoner names from the team data."""
+
     summoners = []
     for player in team:
         for i in player.find_elements(By.CLASS_NAME, 'style__StyledMatchPlayerSummoner-sc-191ei4l-0'):
@@ -102,7 +107,8 @@ def get_summoners(team):
     return([summoners_1, summoners_2])
 
 def Handler(event, lambda_context):
-
+    """Scrapes the champions queue website and saves the data to a csv."""
+    
     options = Options()
     options.add_argument("--headless=new")
     driver = webdriver.Firefox(options=options)
