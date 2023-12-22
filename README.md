@@ -9,6 +9,7 @@ If you'd like more indepth instruction and tools, I'll be building upon this rep
   
 ## Table of Contents
 - [Overview](#overview)
+- [Usage](#usage)
 - [Installation](#installation)
 - [License](#license)
 
@@ -22,7 +23,18 @@ This project aims to make it easier for all people to work with data for
 - Champion's Queue
 - Stage Games
 
-  
+## Usage
+The code that I have written here requires a Riot Production Key in order to really function properly - because of this, you won't be able to get updated data using the tools in this repo (because you'd **very** quickly run into API limits).
+
+**BUT**
+
+I've included 3 .parquet files with Ladder, SoloQ and Stage data as of `December 21, 2023`
+
+You can upsert these to your PostgreSQL database for now using the `update_table_` functions in `SQL.update_table`, just make sure to set `from_parquet` to `True`
+
+Once you've got the data in your PostgreSQL database, the world is your oyster! I included some miscellaneous functions that can do different things, poke around and see what you can find / build upon!
+
+If you're interested in more, I'll be releasing updates to this on my Patreon and I'll try to upload daily parquet updates for people who aren't able to grab a prod key (for now, until I can find a webapp solution to automate the process)
 
 ## Installation
 
@@ -73,19 +85,6 @@ Once you have finished the above tasks, navigate to the directory you'd like to 
 `service_file  =  os.path.join(os.path.dirname(Path.cwd()), 'JSONs\\<Your Oauth2 filename>.json')`
   
 That **should** be everything. If you run into errors or spot anything that I missed, please reach out!
-
-## Usage
-The code that I have written here requires a Riot Production Key in order to really function properly - because of this, you won't be able to get updated data using the tools in this repo (because you'd **very** quickly run into API limits).
-
-**BUT**
-
-I've included 3 .parquet files with Ladder, SoloQ and Stage data as of `December 21, 2023`
-
-You can upsert these to your PostgreSQL database for now using the `update_table_` functions in `SQL.update_table`, just make sure to set `from_parquet` to `True`
-
-Once you've got the data in your PostgreSQL database, the world is your oyster! I included some miscellaneous functions that can do different things, poke around and see what you can find / build upon!
-
-If you're interested in more, I'll be releasing updates to this on my Patreon and I'll try to upload daily parquet updates for people who aren't able to grab a prod key (for now, until I can find a webapp solution to automate the process)
 
 ## License
 MIT License
