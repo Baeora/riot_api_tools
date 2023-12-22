@@ -11,7 +11,7 @@ If you'd like more indepth instruction and tools, I'll be building upon this rep
 - [Overview](#overview)
 - [Usage](#usage)
 - [Installation](#installation)
-- [Riot API Endpoints]()
+- [Riot API Endpoints](#riot-api-endpoints)
 - [Version Notes](#version-notes)
 - [License](#license)
 
