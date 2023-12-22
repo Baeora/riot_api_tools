@@ -86,6 +86,11 @@ Once you have finished the above tasks, navigate to the directory you'd like to 
   
 That **should** be everything. If you run into errors or spot anything that I missed, please reach out!
 
+## Version Notes
+For version notes, please see `/tools/version_notes.txt`! That is where I'll be putting all of my updates
+
+Not exactly industry standard but that's how I like to do it. Enjoy!
+
 ## License
 MIT License
 
